@@ -3,7 +3,7 @@ services:
     image: mariadb:10.3
     environment:
       MYSQL_ROOT_PASSWORD: secreta
-      MYSQL_DATABASE: dawbreakfast
+      MYSQL_DATABASE: tpv
       MYSQL_USER: admin
       MYSQL_PASSWORD: secreta
     ports:
