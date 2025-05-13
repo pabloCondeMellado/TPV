@@ -36,7 +36,7 @@ public class Detalle {
 	private Cuenta cuenta;
 	
 	@ManyToOne
-	@JoinColumn(name = "id_producto", referencedColumnName = "id", insertable = false, nullable = false)
+	@JoinColumn(name = "id_producto", referencedColumnName = "id", insertable = false, updatable = false)
 	private Producto producto;
 	
 }

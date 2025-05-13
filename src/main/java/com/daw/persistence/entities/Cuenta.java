@@ -31,8 +31,8 @@ public class Cuenta {
 	@Column(name = "id_usuario")
 	private Integer idUsuario;
 	@Column(columnDefinition = "VARCHAR(30)")
-	private String nombre;
-	
+	private String cliente;
+	@Column(name = "metodo_pago")
 	private MetodoPago metodoPago;
 	@Column(columnDefinition = "DATETIME")
 	private LocalDateTime fecha;
@@ -45,7 +45,7 @@ public class Cuenta {
 	@JoinColumn(name = "id_usuario", referencedColumnName = "id", insertable = false, updatable = false)
 	private Usuario usuario;
 	 
-	@OneToMany(mappedBy = "Cuenta", fetch = FetchType.LAZY)
+	@OneToMany(mappedBy = "cuenta", fetch = FetchType.LAZY)
 	@JsonIgnore
 	private List<Detalle> detalle;
 }
