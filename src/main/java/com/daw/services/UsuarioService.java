@@ -43,4 +43,8 @@ public class UsuarioService {
 		
 		return result;
 	}
+	
+	public Usuario login(String nombre, String contrasenia) {
+		return usuarioCrudRepository.findByNombreAndContrasenia(nombre, contrasenia);
+	}
 }

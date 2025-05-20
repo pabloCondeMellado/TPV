@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.daw.persistence.entities.Usuario;
 import com.daw.services.UsuarioService;
+import com.daw.services.dto.LoginRequest;
+import com.daw.services.dto.LoginResponse;
 
 @RestController
 @RequestMapping("/usuario")
@@ -60,5 +62,26 @@ public class UsuarioController {
 			return ResponseEntity.ok().build();
 		}
 		return ResponseEntity.notFound().build();
+	}
+	
+	@PostMapping("/login")
+	public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
+		if(loginRequest.getNombre().trim().isEmpty() || loginRequest.getNombre() == null) {
+			return ResponseEntity.badRequest().build();
+		}
+		if(loginRequest.getContrasenia().trim().isEmpty()  || loginRequest.getContrasenia() == null) {
+			return ResponseEntity.badRequest().build();
+		}
+		Usuario usuario = usuarioService.login(loginRequest.getNombre(), loginRequest.getContrasenia());
+	    if (usuario == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+	    }
+
+	    LoginResponse respuesta = new LoginResponse();
+	    respuesta.setId(usuario.getId());
+	    respuesta.setNombre(usuario.getNombre());
+	    respuesta.setRol(usuario.getRol());
+	    return ResponseEntity.ok(respuesta);
+		
 	}
 }
