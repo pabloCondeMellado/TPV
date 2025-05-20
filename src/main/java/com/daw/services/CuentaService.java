@@ -114,7 +114,7 @@ public class CuentaService {
 	    }
 
 	    actualizarSubtotal(detalleInputDto.getIdCuenta());
-
+	    actualizarStock(detalleInputDto.getIdProducto());
 
 	    return CuentaMapper.toDto(cuenta);
 	}
@@ -130,16 +130,30 @@ public class CuentaService {
 		return CuentaMapper.toDto(cuenta);
 	}
 	
-	public List<CuentaDto> getCuentasAbiertasHoy(){
-	     	LocalDate today = LocalDate.now();
-	        LocalDateTime inicio = today.atStartOfDay();
-	        LocalDateTime fin = today.plusDays(1).atStartOfDay().minusNanos(1);
+	private List<CuentaDto> getCuentasPorEstadoHoy(Estado estado){
+     	LocalDate hoy = LocalDate.now();
+        LocalDateTime inicio = hoy.atTime(6,0);
+        LocalDateTime fin = hoy.plusDays(1).atTime(5, 59);
 
-	        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetween(
-	            Estado.ABIERTA, inicio, fin
-	        );
-	        return cuentas.stream()
-	                      .map(CuentaMapper::toDto)
-	                      .collect(Collectors.toList());
-	} 
+        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetween(
+            estado, inicio, fin
+        );
+        return cuentas.stream()
+                      .map(CuentaMapper::toDto)
+                      .collect(Collectors.toList());
+	}
+	
+	public List<CuentaDto> getCuentasAbiertasHoy(){
+		return getCuentasPorEstadoHoy(Estado.ABIERTA);
+	}
+	
+	public List<CuentaDto> getCuentasCerradasHoy(){
+		return getCuentasPorEstadoHoy(Estado.CERRADA);
+	}
+	
+	public void actualizarStock(int idProducto) {
+		Producto producto = productoCrudRepository.findById(idProducto).get();
+		producto.setStock(producto.getStock() - 1);
+		productoCrudRepository.save(producto);
+	}
 }

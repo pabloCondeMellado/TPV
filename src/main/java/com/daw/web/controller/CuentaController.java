@@ -15,7 +15,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.daw.persistence.crud.ProductoCrudRepository;
 import com.daw.persistence.entities.Cuenta;
+import com.daw.persistence.entities.Estado;
+import com.daw.persistence.entities.Producto;
 import com.daw.services.CuentaService;
 import com.daw.services.ProductoService;
 import com.daw.services.dto.CuentaDto;
@@ -92,7 +95,11 @@ public class CuentaController {
 		if(!cuentaService.existsCuenta(idCuenta)) {
 			return ResponseEntity.badRequest().build();
 		}
-		CuentaDto cuenta = cuentaService.cerrarCuenta(idCuenta, metodoPago);
+		CuentaDto cuenta = cuentaService.findById(idCuenta);
+		if(cuenta.getEstado() == Estado.CERRADA) {
+			return ResponseEntity.badRequest().build();
+		}
+		cuenta = cuentaService.cerrarCuenta(idCuenta, metodoPago);
 		return ResponseEntity.ok(cuenta);
 	}
 	
@@ -101,4 +108,12 @@ public class CuentaController {
 		List<CuentaDto> cuentas = cuentaService.getCuentasAbiertasHoy();
 		return ResponseEntity.ok(cuentas);
 	}
+	
+	@GetMapping("/cerradas/hoy")
+	public ResponseEntity<List<CuentaDto>> getCuentasCerradasHoy(){
+		List<CuentaDto> cuentas = cuentaService.getCuentasCerradasHoy();
+		return ResponseEntity.ok(cuentas);
+	}
+	
+	
 }

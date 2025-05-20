@@ -11,7 +11,8 @@ public class DetalleMapper {
 		dto.setId(detalle.getId());
 		dto.setIdProducto(detalle.getIdProducto());
 		dto.setCantidad(detalle.getCantidad());
-		dto.setPrecio(detalle.getSubtotal());
+		dto.setPrecio(detalle.getProducto().getPrecio());
+		dto.setSubtotal(detalle.getSubtotal());
 		dto.setProducto(detalle.getProducto().getNombre());
 		
 		return dto;

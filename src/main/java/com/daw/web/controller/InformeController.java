@@ -1,5 +1,9 @@
 package com.daw.web.controller;
 
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,12 +19,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import com.daw.persistence.entities.Informe;
+import com.daw.services.CuentaService;
 import com.daw.services.InformeService;
+import com.daw.services.dto.CuentaDto;
 
 @RestController
 @RequestMapping("/informe")
 public class InformeController {
+	@Autowired
+	private CuentaService cuentaService;
 	@Autowired
 	private InformeService informeService;
 	
@@ -62,4 +73,30 @@ public class InformeController {
 		
 		return ResponseEntity.notFound().build();
 	}
+	
+	@GetMapping("/generar/pdf")
+	public ResponseEntity<byte[]> descargarInformePdf() {
+	    try {
+	        // Obtén las cuentas cerradas de hoy
+	        List<CuentaDto> cuentasCerradas = cuentaService.getCuentasCerradasHoy();
+
+	        // Toma la fecha del primer registro, o la fecha actual si la lista está vacía
+	        LocalDateTime fechaInformeDateTime = !cuentasCerradas.isEmpty() && cuentasCerradas.get(0).getFecha() != null
+	            ? cuentasCerradas.get(0).getFecha()
+	            : LocalDateTime.now();
+	        LocalDate fechaInforme = fechaInformeDateTime.toLocalDate();
+	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+	        String fechaFormateada = fechaInforme.format(formatter);
+	        // Pasa la fecha al servicio para que también la use dentro del PDF
+	        byte[] pdf = informeService.generarInforme(fechaInforme);
+
+	        HttpHeaders headers = new HttpHeaders();
+	        headers.setContentType(MediaType.APPLICATION_PDF);
+	        headers.setContentDispositionFormData("attachment", "informe_" + fechaFormateada + ".pdf");
+	        return ResponseEntity.ok().headers(headers).body(pdf);
+	    } catch(Exception e) {
+	        return ResponseEntity.internalServerError().build();
+	    }
+	}
+
 }

@@ -23,15 +23,25 @@ public class Informe {
 	private Integer id;
 	@Column(columnDefinition = "DATETIME")
 	private LocalDateTime fecha;
-	@Column(name = "total_ventas", columnDefinition = "DOUBLE(6,2)")
+	@Column(name = "total_ventas", columnDefinition = "DOUBLE(10,2)")
 	private Double totalVentas;
-	@Column(name = "cantidad_ventas", columnDefinition = "TEXT")
-	private String CantidadVentas;
+	
+	@Column(name = "detalles_productos", columnDefinition = "TEXT")
+	private String detalleProductos;
+
 	@Column(name = "ventas_efectivo")
 	private Integer ventasEfectivo;
+	@Column(name="total_efectivo", columnDefinition = "DOUBLE(10,2)")
+	private Double totalEfectivo;
+	
 	@Column(name = "ventas_tarjeta")
 	private Integer ventasTarjeta;
+	@Column(name="total_tarjeta", columnDefinition = "DOUBLE(10,2)")
+	private Double totalTarjeta;
+	
 	@Column(name = "ventas_ticket")
 	private Integer ventasTicket;
+	@Column(name="total_ticket", columnDefinition = "DOUBLE(10,2)")
+	private Double totalTicket;
 	
 }

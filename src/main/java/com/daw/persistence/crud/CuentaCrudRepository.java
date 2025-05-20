@@ -10,4 +10,5 @@ import com.daw.persistence.entities.Estado;
 
 public interface CuentaCrudRepository extends ListCrudRepository<Cuenta, Integer>{
 	List<Cuenta> findByEstadoAndFechaBetween(Estado estado,LocalDateTime inicio,LocalDateTime fin);
+	
 }
