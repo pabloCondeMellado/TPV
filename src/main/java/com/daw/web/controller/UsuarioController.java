@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,9 @@ import com.daw.services.dto.LoginResponse;
 @RequestMapping("/usuario")
 public class UsuarioController {
 	@Autowired
+	private PasswordEncoder passwordEncoder;
+	
+	@Autowired
 	private UsuarioService usuarioService;
 	
 	@GetMapping
@@ -41,20 +45,38 @@ public class UsuarioController {
 	}
 	
 	@PostMapping
-	public ResponseEntity<Usuario> createUsuario(@RequestBody Usuario usuario){
-		return new ResponseEntity<Usuario>(this.usuarioService.create(usuario), HttpStatus.CREATED);
+	public ResponseEntity<Usuario> createUsuario(@RequestBody Usuario usuario) {
+	    // Codifica la contraseña en texto plano usando el bean PasswordEncoder
+	    String rawPassword = usuario.getContrasenia();
+	    String hash = passwordEncoder.encode(rawPassword);
+	    usuario.setContrasenia(hash);
+
+	    return new ResponseEntity<Usuario>(usuarioService.create(usuario), HttpStatus.CREATED);
 	}
-	
+
 	@PutMapping("/{idUsuario}")
-	public ResponseEntity<Usuario> updateUsuario(@RequestBody Usuario usuario, @PathVariable int idUsuario){
-		if(idUsuario != usuario.getId()){
-			return ResponseEntity.badRequest().build();
-		}else if(!this.usuarioService.existsUsuario(idUsuario)) {
-			return ResponseEntity.notFound().build();
-		}
-		
-		return ResponseEntity.ok(this.usuarioService.update(usuario));
+	public ResponseEntity<Usuario> updateUsuario(@RequestBody Usuario usuario, @PathVariable int idUsuario) {
+	    if (idUsuario != usuario.getId()) {
+	        return ResponseEntity.badRequest().build();
+	    }
+	    Optional<Usuario> usuarioBD = usuarioService.findByID(idUsuario);
+	    if (usuarioBD.isEmpty()) {
+	        return ResponseEntity.notFound().build();
+	    }
+	    // Solo codifica si la contraseña es nueva y no está vacía
+	    if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
+	        String rawPassword = usuario.getContrasenia();
+	        String hash = passwordEncoder.encode(rawPassword);
+	        usuario.setContrasenia(hash);
+	    } else {
+	        // Si no se envía una nueva contraseña, conserva la anterior
+	        usuario.setContrasenia(usuarioBD.get().getContrasenia());
+	    }
+
+	    return ResponseEntity.ok(usuarioService.update(usuario));
 	}
+
+
 	
 	@DeleteMapping("/{idUsuario}")
 	public ResponseEntity<Usuario> deleteUsuario(@PathVariable int idUsuario){
@@ -64,24 +86,6 @@ public class UsuarioController {
 		return ResponseEntity.notFound().build();
 	}
 	
-	@PostMapping("/login")
-	public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
-		if(loginRequest.getNombre().trim().isEmpty() || loginRequest.getNombre() == null) {
-			return ResponseEntity.badRequest().build();
-		}
-		if(loginRequest.getContrasenia().trim().isEmpty()  || loginRequest.getContrasenia() == null) {
-			return ResponseEntity.badRequest().build();
-		}
-		Usuario usuario = usuarioService.login(loginRequest.getNombre(), loginRequest.getContrasenia());
-	    if (usuario == null) {
-	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-	    }
 
-	    LoginResponse respuesta = new LoginResponse();
-	    respuesta.setId(usuario.getId());
-	    respuesta.setNombre(usuario.getNombre());
-	    respuesta.setRol(usuario.getRol());
-	    return ResponseEntity.ok(respuesta);
-		
-	}
+
 }

@@ -78,7 +78,7 @@ public class InformeController {
 	public ResponseEntity<byte[]> descargarInformePdf() {
 	    try {
 	        // Obtén las cuentas cerradas de hoy
-	        List<CuentaDto> cuentasCerradas = cuentaService.getCuentasCerradasHoy();
+	        List<CuentaDto> cuentasCerradas = cuentaService.getCuentasCerradasHoyRoot();
 
 	        // Toma la fecha del primer registro, o la fecha actual si la lista está vacía
 	        LocalDateTime fechaInformeDateTime = !cuentasCerradas.isEmpty() && cuentasCerradas.get(0).getFecha() != null

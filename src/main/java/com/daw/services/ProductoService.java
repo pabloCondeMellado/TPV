@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.daw.persistence.crud.ProductoCrudRepository;
 import com.daw.persistence.entities.Producto;
+import com.daw.persistence.entities.Sector;
 
 @Service
 public class ProductoService {
@@ -41,5 +42,13 @@ public class ProductoService {
 			result = true;
 		}
 		return result;
+	}
+	
+	public List<Producto> findBySector(Sector sector){
+		return this.productoCrudRepository.findBySector(sector);
+	}
+	
+	public List<Producto> findBySectorNot(Sector sector){
+		return this.productoCrudRepository.findBySectorNot(sector);
 	}
 }

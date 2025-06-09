@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.daw.persistence.entities.Producto;
+import com.daw.persistence.entities.Sector;
 import com.daw.services.ProductoService;
 
 @RestController
@@ -60,5 +61,15 @@ public class ProductoController {
 			return ResponseEntity.ok().build();
 		}
 		return ResponseEntity.notFound().build();
+	}
+	
+	@GetMapping("/vitrina")
+	public ResponseEntity<List<Producto>> getProductoVitrina(){
+		return ResponseEntity.ok(this.productoService.findBySector(Sector.VITRINA));
+	}
+	
+	@GetMapping("/comida")
+	public ResponseEntity<List<Producto>> getProductoComida(){
+		return ResponseEntity.ok(this.productoService.findBySectorNot(Sector.VITRINA));
 	}
 }

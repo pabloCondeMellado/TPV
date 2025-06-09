@@ -18,8 +18,10 @@ import com.daw.persistence.entities.Detalle;
 import com.daw.persistence.entities.Estado;
 import com.daw.persistence.entities.MetodoPago;
 import com.daw.persistence.entities.Producto;
+import com.daw.persistence.entities.Rol;
 import com.daw.services.dto.CuentaDto;
 import com.daw.services.dto.DetalleInputDto;
+import com.daw.services.dto.DetalleOutputDto;
 import com.daw.services.mappers.CuentaMapper;
 import com.daw.services.mappers.DetalleMapper;
 
@@ -83,23 +85,28 @@ public class CuentaService {
 		
 		return result;
 	}
-	public void actualizarSubtotal(int idCuenta){
-		Cuenta cuenta = this.cuentaCrudRepository.findById(idCuenta).get();
-		double Total = 0.0;
-	    // Asegúrate de que los detalles están cargados
-	    for (Detalle d : cuenta.getDetalle()) {
-	        Total += d.getSubtotal();
+	public void actualizarSubtotal(int idCuenta) {
+	    Optional<Cuenta> Cuenta = this.cuentaCrudRepository.findById(idCuenta);
+	    if (Cuenta.isPresent()) {
+	        Cuenta cuenta = Cuenta.get();
+	        double total = 0.0;
+	        for (Detalle d : cuenta.getDetalle()) {
+	            total += d.getSubtotal();
+	        }
+	        cuenta.setTotal(total);
+	        this.cuentaCrudRepository.save(cuenta);
 	    }
-	    cuenta.setTotal(Total);
-	    this.cuentaCrudRepository.save(cuenta);
+	    // Si la cuenta no existe, simplemente no hace nada (o podrías lanzar una excepción si lo prefieres)
 	}
+
 	public CuentaDto addProducto(DetalleInputDto detalleInputDto) {
 	    Cuenta cuenta = cuentaCrudRepository.findById(detalleInputDto.getIdCuenta()).get();
 	    Producto producto = productoCrudRepository.findById(detalleInputDto.getIdProducto()).get();
-	    Optional<Detalle> detalle = detalleCrudRepository.findByIdCuentaAndIdProducto(cuenta.getId(), producto.getId());
-	    if (cuenta.getEstado() == Estado.CERRADA) {
-	        throw new IllegalStateException("No se pueden añadir productos a una cuenta cerrada.");
+	    if (producto.getStock() <= 0) {
+	        throw new IllegalStateException("No hay stock disponible para este producto.");
 	    }
+	    Optional<Detalle> detalle = detalleCrudRepository.findByIdCuentaAndIdProducto(cuenta.getId(), producto.getId());
+
 	    if (detalle.isPresent()) {
 	        Detalle detalleExistente = detalle.get();
 	        int nuevaCantidad = detalleExistente.getCantidad() + detalleInputDto.getCantidad();
@@ -114,7 +121,7 @@ public class CuentaService {
 	    }
 
 	    actualizarSubtotal(detalleInputDto.getIdCuenta());
-	    actualizarStock(detalleInputDto.getIdProducto());
+	    actualizarStock(detalleInputDto.getIdProducto(), -1);
 
 	    return CuentaMapper.toDto(cuenta);
 	}
@@ -130,30 +137,111 @@ public class CuentaService {
 		return CuentaMapper.toDto(cuenta);
 	}
 	
-	private List<CuentaDto> getCuentasPorEstadoHoy(Estado estado){
+	private List<CuentaDto> getCuentasPorEstadoHoy(Estado estado, Rol rol){
      	LocalDate hoy = LocalDate.now();
         LocalDateTime inicio = hoy.atTime(6,0);
         LocalDateTime fin = hoy.plusDays(1).atTime(5, 59);
 
-        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetween(
-            estado, inicio, fin
-        );
+        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetweenAndUsuarioRol(estado, inicio, fin,rol);
         return cuentas.stream()
                       .map(CuentaMapper::toDto)
                       .collect(Collectors.toList());
 	}
 	
-	public List<CuentaDto> getCuentasAbiertasHoy(){
-		return getCuentasPorEstadoHoy(Estado.ABIERTA);
+	public List<CuentaDto> getCuentasAbiertasHoy(Rol rol){
+		return getCuentasPorEstadoHoy(Estado.ABIERTA, rol);
 	}
 	
-	public List<CuentaDto> getCuentasCerradasHoy(){
-		return getCuentasPorEstadoHoy(Estado.CERRADA);
+	public List<CuentaDto> getCuentasCerradasHoy(Rol rol){
+		return getCuentasPorEstadoHoy(Estado.CERRADA, rol);
+	}
+
+	public List<CuentaDto> getCuentasCerradasHoyRoot(){
+     	LocalDate hoy = LocalDate.now();
+        LocalDateTime inicio = hoy.atTime(6,0);
+        LocalDateTime fin = hoy.plusDays(1).atTime(5, 59);
+
+        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetween(Estado.CERRADA, inicio, fin);
+        return cuentas.stream()
+                      .map(CuentaMapper::toDto)
+                      .collect(Collectors.toList());
+	}
+	public List<CuentaDto> getCuentasAbiertasHoyRoot(){
+     	LocalDate hoy = LocalDate.now();
+        LocalDateTime inicio = hoy.atTime(6,0);
+        LocalDateTime fin = hoy.plusDays(1).atTime(5, 59);
+
+        List<Cuenta> cuentas = cuentaCrudRepository.findByEstadoAndFechaBetween(Estado.ABIERTA, inicio, fin);
+        return cuentas.stream()
+                      .map(CuentaMapper::toDto)
+                      .collect(Collectors.toList());
+	}
+	public void actualizarStock(int idProducto, int cantidad) {
+	    Optional<Producto> optionalProducto = productoCrudRepository.findById(idProducto);
+	    if (optionalProducto.isPresent()) {
+	        Producto producto = optionalProducto.get();
+	        producto.setStock(producto.getStock() + cantidad); // cantidad puede ser positiva o negativa
+	        productoCrudRepository.save(producto);
+	    }
 	}
 	
-	public void actualizarStock(int idProducto) {
-		Producto producto = productoCrudRepository.findById(idProducto).get();
-		producto.setStock(producto.getStock() - 1);
-		productoCrudRepository.save(producto);
-	}
+    // Restar cantidad de producto de la cuenta (y eliminar si llega a 0)
+    public CuentaDto restarCantidadProducto(DetalleInputDto detalleInputDto) {
+        Cuenta cuenta = cuentaCrudRepository.findById(detalleInputDto.getIdCuenta())
+            .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada"));
+        Producto producto = productoCrudRepository.findById(detalleInputDto.getIdProducto())
+            .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+
+        Optional<Detalle> detalleOpt = detalleCrudRepository.findByIdCuentaAndIdProducto(
+            cuenta.getId(), producto.getId());
+
+
+        if (detalleOpt.isPresent()) {
+            Detalle detalle = detalleOpt.get();
+            int cantidadActual = detalle.getCantidad();
+            int cantidadARestar = detalleInputDto.getCantidad();
+
+            if (cantidadARestar >= cantidadActual) {
+                detalleCrudRepository.delete(detalle);
+            } else {
+                int nuevaCantidad = cantidadActual - cantidadARestar;
+                detalle.setCantidad(nuevaCantidad);
+                detalle.setSubtotal(producto.getPrecio() * nuevaCantidad);
+                detalleCrudRepository.save(detalle);
+            }
+
+            actualizarStock(producto.getId(), cantidadARestar); // Devuelves stock
+            actualizarSubtotal(cuenta.getId());
+        } else {
+            // Producto no está en la cuenta, puedes lanzar excepción o ignorar
+            // throw new IllegalArgumentException("El producto no está en la cuenta.");
+        }
+
+        return CuentaMapper.toDto(cuentaCrudRepository.findById(cuenta.getId()).get());
+    }
+
+    // Eliminar completamente un producto de la cuenta
+    public CuentaDto removeProducto(DetalleInputDto detalleInputDto) {
+        Cuenta cuenta = cuentaCrudRepository.findById(detalleInputDto.getIdCuenta())
+            .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada"));
+        Producto producto = productoCrudRepository.findById(detalleInputDto.getIdProducto())
+            .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+
+        Optional<Detalle> detalleOpt = detalleCrudRepository.findByIdCuentaAndIdProducto(
+            cuenta.getId(), producto.getId());
+
+        if (detalleOpt.isPresent()) {
+            Detalle detalle = detalleOpt.get();
+            int cantidadEliminada = detalle.getCantidad();
+            detalleCrudRepository.delete(detalle);
+
+            actualizarStock(producto.getId(), cantidadEliminada); // Devuelves todo el stock
+            actualizarSubtotal(cuenta.getId());
+        } else {
+            // Producto no está en la cuenta, puedes lanzar excepción o ignorar
+        }
+
+        return CuentaMapper.toDto(cuentaCrudRepository.findById(cuenta.getId()).get());
+    }
+
 }

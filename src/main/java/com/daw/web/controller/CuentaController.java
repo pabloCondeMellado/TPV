@@ -13,16 +13,20 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.daw.persistence.crud.ProductoCrudRepository;
 import com.daw.persistence.entities.Cuenta;
 import com.daw.persistence.entities.Estado;
 import com.daw.persistence.entities.Producto;
+import com.daw.persistence.entities.Rol;
 import com.daw.services.CuentaService;
 import com.daw.services.ProductoService;
 import com.daw.services.dto.CuentaDto;
 import com.daw.services.dto.DetalleInputDto;
+import com.daw.services.dto.DetalleOutputDto;
+import com.fasterxml.jackson.databind.introspect.TypeResolutionContext.Empty;
 
 @RestController
 @RequestMapping("/cuenta")
@@ -32,11 +36,19 @@ public class CuentaController {
 	@Autowired
 	private CuentaService cuentaService;
 	
+	
 	@GetMapping
 	public ResponseEntity<List<CuentaDto>> listaCuenta(){
 		return ResponseEntity.ok(this.cuentaService.findAll());
 	}
-	
+	@GetMapping("/cerradas")
+	public ResponseEntity<List<CuentaDto>> listaCuentaCerradasRoot(){
+		return ResponseEntity.ok(this.cuentaService.getCuentasCerradasHoyRoot());
+		}
+	@GetMapping("/abiertas")
+	public ResponseEntity<List<CuentaDto>> listaCuentaAbiertasRoot(){
+		return ResponseEntity.ok(this.cuentaService.getCuentasAbiertasHoyRoot());
+		}
 	@GetMapping("/{idCuenta}")
 	public ResponseEntity<CuentaDto> getCuentaById(@PathVariable int idCuenta){
 		if(this.cuentaService.existsCuenta(idCuenta)) {
@@ -47,9 +59,6 @@ public class CuentaController {
 	
 	@PostMapping
 	public ResponseEntity<CuentaDto> createCuenta(@RequestBody Cuenta cuenta){
-		if(!this.cuentaService.existsCuenta(cuenta.getIdUsuario())) {
-			return ResponseEntity.notFound().build();
-		}
 		return new ResponseEntity<CuentaDto>(this.cuentaService.create(cuenta), HttpStatus.CREATED);
 	}
 	
@@ -74,20 +83,18 @@ public class CuentaController {
 	
 	@PostMapping("/{idCuenta}/producto")
 	public ResponseEntity<CuentaDto> addProdcutoToCuenta(@PathVariable int idCuenta, @RequestBody DetalleInputDto detalleInputDto){
-		if(!this.cuentaService.existsCuenta(idCuenta)) {
-			return ResponseEntity.badRequest().build();
-		}
-		if(!this.productoService.existsProdcuto(detalleInputDto.getIdProducto())) {
-			return ResponseEntity.badRequest().build();
-		}
-		if(detalleInputDto.getCantidad()<= 0) {
-			return ResponseEntity.badRequest().build();
-		}
-
-		detalleInputDto.setIdCuenta(idCuenta);
-		CuentaDto cuentaActualizada = cuentaService.addProducto(detalleInputDto);
-		
-		return ResponseEntity.ok(cuentaActualizada);
+	    if(!this.cuentaService.existsCuenta(idCuenta)) {
+	        return ResponseEntity.badRequest().build();
+	    }
+	    if(!this.productoService.existsProdcuto(detalleInputDto.getIdProducto())) {
+	        return ResponseEntity.badRequest().build();
+	    }
+	    if(detalleInputDto.getCantidad()<= 0) {
+	        return ResponseEntity.badRequest().build();
+	    }
+	    detalleInputDto.setIdCuenta(idCuenta);
+	    CuentaDto cuentaActualizada = cuentaService.addProducto(detalleInputDto);
+	    return ResponseEntity.ok(cuentaActualizada);
 	}
 	
 	@PutMapping("/{idCuenta}/cerrar")
@@ -104,16 +111,73 @@ public class CuentaController {
 	}
 	
 	@GetMapping("/abiertas/hoy")
-	public ResponseEntity<List<CuentaDto>> getCuentasAbiertasHoy(){
-		List<CuentaDto> cuentas = cuentaService.getCuentasAbiertasHoy();
-		return ResponseEntity.ok(cuentas);
+	public ResponseEntity<List<CuentaDto>> getCuentasAbiertasHoy(@RequestParam String rol) {
+	    if (rol == null || rol.trim().isEmpty()) {
+	        return ResponseEntity.badRequest().build();
+	    }
+
+	    Rol rolEnum;
+	    try {
+	        rolEnum = Rol.valueOf(rol.toUpperCase());
+	    } catch (IllegalArgumentException ex) {
+	        return ResponseEntity.badRequest().build();
+	    }
+
+	    List<CuentaDto> cuentas = cuentaService.getCuentasAbiertasHoy(rolEnum);
+	    return ResponseEntity.ok(cuentas);
 	}
-	
+
 	@GetMapping("/cerradas/hoy")
-	public ResponseEntity<List<CuentaDto>> getCuentasCerradasHoy(){
-		List<CuentaDto> cuentas = cuentaService.getCuentasCerradasHoy();
+	public ResponseEntity<List<CuentaDto>> getCuentasCerradasHoy(@RequestParam String rol){
+	    if (rol == null || rol.trim().isEmpty()) {
+	        return ResponseEntity.badRequest().build();
+	    }
+
+	    Rol rolEnum;
+	    try {
+	        rolEnum = Rol.valueOf(rol.toUpperCase());
+	    } catch (IllegalArgumentException ex) {
+	        return ResponseEntity.badRequest().build();
+	    }
+
+		List<CuentaDto> cuentas = cuentaService.getCuentasCerradasHoy(rolEnum);
 		return ResponseEntity.ok(cuentas);
 	}
 	
-	
+    // Restar cantidad de producto
+    @PutMapping("/{idCuenta}/producto/restar")
+    public ResponseEntity<CuentaDto> restarCantidadProducto( @PathVariable int idCuenta, @RequestBody DetalleInputDto detalleInputDto) {
+        if (!cuentaService.existsCuenta(idCuenta)) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (!productoService.existsProdcuto(detalleInputDto.getIdProducto())) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (detalleInputDto.getCantidad() <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        detalleInputDto.setIdCuenta(idCuenta);
+        CuentaDto cuentaActualizada = cuentaService.restarCantidadProducto(detalleInputDto);
+
+        return ResponseEntity.ok(cuentaActualizada);
+    }
+    
+    @DeleteMapping("/{idCuenta}/producto/remove")
+    public ResponseEntity<CuentaDto> removeProductoFromCuenta(
+            @PathVariable int idCuenta,
+            @RequestBody DetalleInputDto detalleInputDto) {
+        if (!cuentaService.existsCuenta(idCuenta)) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (!productoService.existsProdcuto(detalleInputDto.getIdProducto())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        detalleInputDto.setIdCuenta(idCuenta);
+        CuentaDto cuentaActualizada = cuentaService.removeProducto(detalleInputDto);
+
+        return ResponseEntity.ok(cuentaActualizada);
+    }
+
 }
