@@ -34,8 +34,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(withDefaults())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/informe/generar/pdf").hasRole("ROOT")
-                .requestMatchers(HttpMethod.POST, "/api/usuario").hasRole("ROOT")
+            	.requestMatchers("/usuario/login").permitAll() 
+                .requestMatchers("/informe/generar/pdf").hasRole("ROOT")
+                .requestMatchers("/usuario", "/usuario/**").hasRole("ROOT")
                 .anyRequest().permitAll())
             	.formLogin(form -> form.disable())
             	.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

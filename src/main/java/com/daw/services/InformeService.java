@@ -73,7 +73,7 @@ public class InformeService {
 	}
 	
 	public byte[] generarInforme(LocalDate fechaInforme) throws Exception {
-	    List<CuentaDto> cuentasCerradas = cuentaService.getCuentasCerradasHoy();
+	    List<CuentaDto> cuentasCerradas = cuentaService.getCuentasCerradasHoyRoot();
 
 	    Map<Integer, ProductoInformeDto> resumenProductos = new HashMap<>();
 	    double totalGeneral = 0.0;

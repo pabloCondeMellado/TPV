@@ -16,10 +16,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.daw.persistence.entities.Rol;
 import com.daw.persistence.entities.Usuario;
 import com.daw.services.UsuarioService;
 import com.daw.services.dto.LoginRequest;
 import com.daw.services.dto.LoginResponse;
+import com.daw.services.dto.UsuarioDto;
 
 @RestController
 @RequestMapping("/usuario")
@@ -55,25 +57,33 @@ public class UsuarioController {
 	}
 
 	@PutMapping("/{idUsuario}")
-	public ResponseEntity<Usuario> updateUsuario(@RequestBody Usuario usuario, @PathVariable int idUsuario) {
-	    if (idUsuario != usuario.getId()) {
+	public ResponseEntity<UsuarioDto> updateUsuario(@RequestBody UsuarioDto usuarioDto, @PathVariable int idUsuario) {
+	    if (idUsuario != usuarioDto.getId()) {
 	        return ResponseEntity.badRequest().build();
 	    }
 	    Optional<Usuario> usuarioBD = usuarioService.findByID(idUsuario);
 	    if (usuarioBD.isEmpty()) {
 	        return ResponseEntity.notFound().build();
 	    }
+	    
+	    Usuario usuarioEntidad = usuarioBD.get();
+	    usuarioEntidad.setNombre(usuarioDto.getNombre());
+	    usuarioEntidad.setRol(Rol.valueOf(usuarioDto.getRol()));
 	    // Solo codifica si la contraseña es nueva y no está vacía
-	    if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
-	        String rawPassword = usuario.getContrasenia();
+	    if (usuarioDto.getContrasenia() != null && !usuarioDto.getContrasenia().isBlank()) {
+	        String rawPassword = usuarioDto.getContrasenia();
 	        String hash = passwordEncoder.encode(rawPassword);
-	        usuario.setContrasenia(hash);
-	    } else {
-	        // Si no se envía una nueva contraseña, conserva la anterior
-	        usuario.setContrasenia(usuarioBD.get().getContrasenia());
-	    }
+	        usuarioDto.setContrasenia(hash);
+	    } 
+	    Usuario usuarioActualizado = usuarioService.update(usuarioEntidad);
+	    
+	    UsuarioDto respuestaDto = new UsuarioDto();
+	    respuestaDto.setId(usuarioActualizado.getId());
+	    respuestaDto.setNombre(usuarioActualizado.getNombre());
+	    respuestaDto.setRol(usuarioActualizado.getRol().name());
+	    // No devuelvas la contraseña
 
-	    return ResponseEntity.ok(usuarioService.update(usuario));
+	    return ResponseEntity.ok(respuestaDto);
 	}
 
 
